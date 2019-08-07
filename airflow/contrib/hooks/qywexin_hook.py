@@ -71,7 +71,7 @@ class qyweixinHook(HttpHook):
         if not token:
             raise AirflowException('qyweixin token is requests but get nothing, '
                                    'check you conn_id configuration.')
-        return 'robot/send?access_token={}'.format(token)
+        return 'cgi-bin/webhook/send?key={}'.format(token)
 
     def _build_message(self):
         """
@@ -105,7 +105,7 @@ class qyweixinHook(HttpHook):
         :type headers: dict
         """
         conn = self.get_connection(self.http_conn_id)
-        self.base_url = conn.host if conn.host else 'https://oapi.dingtalk.com'
+        self.base_url = conn.host if conn.host else 'https://qyapi.weixin.qq.com'
         session = requests.Session()
         if headers:
             session.headers.update(headers)
