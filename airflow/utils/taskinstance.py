@@ -1313,6 +1313,7 @@ class TaskInstance(Base, LoggingMixin):
             "### {self.task_id} \n"
             "* Try {try_number} out of {max_tries} \n"
             "* ErrorLog: [link]({self.log_url})"
+            "Log: <a href='{self.log_url}'>Link</a><br>"
         ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
         dingbot_msg_sender(body)
     
