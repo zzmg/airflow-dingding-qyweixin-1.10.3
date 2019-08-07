@@ -28,7 +28,7 @@ def qyweixin_msg_sender(msg):
             "markdown": {
                 "content": md_text
     }
-    
+    }
     r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
     print(r)
     log.info("Sent an alert message to qyweixin.....")
