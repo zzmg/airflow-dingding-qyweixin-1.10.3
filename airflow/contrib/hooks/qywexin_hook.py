@@ -84,10 +84,6 @@ class qyweixinHook(HttpHook):
                 'msgtype': self.message_type,
                 self.message_type: {
                     'content': self.message
-                } if self.message_type == 'text' else self.message,
-                'at': {
-                    'atMobiles': self.at_mobiles,
-                    'isAtAll': self.at_all
                 }
             }
         else:
