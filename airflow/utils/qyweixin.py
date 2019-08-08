@@ -19,16 +19,13 @@ def qyweixin_msg_sender(msg):
     headers = {'Content-Type': 'application/json'}
 
     md_text = {
-        "title": "AIRFLOW ERROR",
-        "text": msg
+        "content": msg
     }
 
     post_data = {
         "msgtype": "markdown",
-            "markdown": {
-                "content": md_text
+        "markdown": md_text
     }
-
     r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
     print(r)
     log.info("Sent an alert message to qyweixin.....")

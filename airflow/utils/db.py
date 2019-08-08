@@ -294,6 +294,10 @@ def initdb(rbac=False):
             host='', password=''))
     merge_conn(
         Connection(
+            conn_id='qyweixin_default', conn_type='http',
+            host='', password=''))
+    merge_conn(
+        Connection(
             conn_id='opsgenie_default', conn_type='http',
             host='', password=''))
 
