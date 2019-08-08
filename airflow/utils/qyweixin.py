@@ -23,7 +23,7 @@ def qyweixin_msg_sender(msg):
     }
 
     post_data = {
-        "msgtype": "markdown"
+        "msgtype": "markdown",
         "markdown": md_text
     }
     r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
