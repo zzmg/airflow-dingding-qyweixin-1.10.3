@@ -103,8 +103,6 @@ from airflow.utils.dates import cron_presets, date_range as utils_date_range
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.email import send_email
-from airflow.utils.dingbot import dingbot_msg_sender
-from airflow.utils.qyweixin import qyweixin_msg_sender
 from airflow.utils.helpers import (
     as_tuple, is_container, validate_key, pprinttable)
 from airflow.utils.operator_resources import Resources
@@ -1605,10 +1603,6 @@ class TaskInstance(Base, LoggingMixin):
                 self.log.info('Marking task as UP_FOR_RETRY')
                 if task.email_on_retry and task.email:
                     self.email_alert(error)
-                if task.ding_on_retry:
-                    self.dingbot_alert(error)
-                if task.qyweixin_on_retry:
-                    self.qyweixin_alert(error)
             else:
                 self.state = State.FAILED
                 if task.retries:
@@ -1617,10 +1611,6 @@ class TaskInstance(Base, LoggingMixin):
                     self.log.info('Marking task as FAILED.')
                 if task.email_on_failure and task.email:
                     self.email_alert(error)
-                if task.ding_on_failure:
-                    self.dingbot_alert(error)
-                if task.qyweixin_on_failure:
-                    self.qyweixin_alert(error)
         except Exception as e2:
             self.log.error('Failed to send email to: %s', task.email)
             self.log.exception(e2)
@@ -1825,7 +1815,6 @@ class TaskInstance(Base, LoggingMixin):
             'Log file: {{ti.log_filepath}}<br>'
             'Mark success: <a href="{{ti.mark_success_url}}">Link</a><br>'
         )
-
         def render(key, content):
             if configuration.has_option('email', key):
                 path = configuration.get('email', key)
@@ -1837,31 +1826,6 @@ class TaskInstance(Base, LoggingMixin):
         subject = render('subject_template', default_subject)
         html_content = render('html_content_template', default_html_content)
         send_email(self.task.email, subject, html_content)
-    
-    def dingbot_alert(self, exception):
-        task = self.task
-        title = "Airflow alert: {self}".format(**locals())
-        exception = str(exception).replace('\n', '<br>')
-        body = (
-            "### {self.task_id} \n"
-            "* Try {try_number} out of {max_tries} \n"
-            "* ErrorLog: [link]({self.log_url})"
-            "Log: <a href='{self.log_url}'>Link</a><br>"
-        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
-        dingbot_msg_sender(body)
-       
-    def qyweixin_alert(self, exception):
-        task = self.task
-        title = "Airflow alert: {self}".format(**locals())
-        exception = str(exception).replace('\n', '<br>')
-        body = (
-            "<h2> {self.task_id} </h2> <br>"
-            "Try {try_number} out of {max_tries}<br>"
-            "Exception:<br>{exception}<br>"
-            "Log: <a href='{self.log_url}'>Link</a><br>"
-        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
-        qyweixin_msg_sender(body)
-
     def set_duration(self):
         if self.end_date and self.start_date:
             self.duration = (self.end_date - self.start_date).total_seconds()
@@ -2155,10 +2119,6 @@ class BaseOperator(LoggingMixin):
             email=None,
             email_on_retry=True,
             email_on_failure=True,
-            ding_on_retry = True,
-            ding_on_failure = True,
-            qyweixin_on_retry = True,
-            qyweixin_on_failure = True,
             retries=0,
             retry_delay=timedelta(seconds=300),
             retry_exponential_backoff=False,
@@ -2207,10 +2167,6 @@ class BaseOperator(LoggingMixin):
         self.email = email
         self.email_on_retry = email_on_retry
         self.email_on_failure = email_on_failure
-        self.ding_on_retry = ding_on_retry
-        self.ding_on_failure = ding_on_failure
-        self.qyweixin_on_retry = qyweixin_on_retry
-        self.qyweixin_on_failure = qyweixin_on_failure
 
         self.start_date = start_date
         if start_date and not isinstance(start_date, datetime):
