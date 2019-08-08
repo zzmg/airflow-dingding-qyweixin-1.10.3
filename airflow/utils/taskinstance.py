@@ -1310,6 +1310,7 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
+            "## {self.dag_id} \n"
             "### {self.task_id} \n"
             "* Try {try_number} out of {max_tries} \n"
             "* ErrorLog: [link]({self.log_url})"
@@ -1321,6 +1322,7 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
+            "## {self.dag_id} \n"
             "### {self.task_id} \n"
             "* Try {try_number} out of {max_tries} \n"
             "* ErrorLog: [link]({self.log_url})"
