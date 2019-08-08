@@ -22,7 +22,7 @@ from airflow.operators.bash_operator import BaseOperator
 from airflow.utils.decorators import apply_defaults
 
 
-class qyweixinOperator(BaseOperator):
+class QyweixinOperator(BaseOperator):
     """
     This operator allows you send qyweixin message using qyweixin custom bot.
     Get qyweixin token from conn_id.password. And prefer set domain to
