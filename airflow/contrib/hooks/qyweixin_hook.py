@@ -51,6 +51,8 @@ class QyweixinHook(HttpHook):
                  qyweixin_conn_id='qyweixin_default',
                  message_type='text',
                  message=None,
+                 mentioned_list=None,
+                 mentioned_mobile_list=None,
                  *args,
                  **kwargs
                  ):
