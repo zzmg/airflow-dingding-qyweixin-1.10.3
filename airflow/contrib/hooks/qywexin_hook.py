@@ -25,7 +25,7 @@ from airflow import AirflowException
 from airflow.hooks.http_hook import HttpHook
 
 
-class qyweixinHook(HttpHook):
+class QyweixinHook(HttpHook):
     """
     This hook allows you send qyweixin message using qyweixin custom bot.
     Get qyweixin token from conn_id.password. And prefer set domain to
@@ -56,7 +56,7 @@ class qyweixinHook(HttpHook):
                  *args,
                  **kwargs
                  ):
-        super(qyweixinHook, self).__init__(http_conn_id=qyweixin_conn_id, *args, **kwargs)
+        super(QyweixinHook, self).__init__(http_conn_id=qyweixin_conn_id, *args, **kwargs)
         self.message_type = message_type
         self.message = message
         self.at_mobiles = at_mobiles

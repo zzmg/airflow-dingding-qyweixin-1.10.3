@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from airflow.contrib.hooks.qyweixin_hook import qyweixinHook
+from airflow.contrib.hooks.qyweixin_hook import QyweixinHook
 from airflow.operators.bash_operator import BaseOperator
 from airflow.utils.decorators import apply_defaults
 
@@ -55,7 +55,7 @@ class QyweixinOperator(BaseOperator):
                  at_all=False,
                  *args,
                  **kwargs):
-        super(qyweixinOperator, self).__init__(*args, **kwargs)
+        super(QyweixinOperator, self).__init__(*args, **kwargs)
         self.qyweixin_conn_id = qyweixin_conn_id
         self.message_type = message_type
         self.message = message
@@ -64,7 +64,7 @@ class QyweixinOperator(BaseOperator):
 
     def execute(self, context):
         self.log.info('Sending qyweixin message.')
-        hook = qyweixinHook(
+        hook = QyweixinHook(
             self.qyweixin_conn_id,
             self.message_type,
             self.message,
