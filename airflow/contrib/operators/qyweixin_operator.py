@@ -51,16 +51,16 @@ class QyweixinOperator(BaseOperator):
                  qyweixin_conn_id='qyweixin_default',
                  message_type='text',
                  message=None,
-                 at_mobiles=None,
-                 at_all=False,
+                 mentioned_list=None,
+                 mentioned_mobile_list=None,
                  *args,
                  **kwargs):
         super(QyweixinOperator, self).__init__(*args, **kwargs)
         self.qyweixin_conn_id = qyweixin_conn_id
         self.message_type = message_type
         self.message = message
-        self.at_mobiles = at_mobiles
-        self.at_all = at_all
+        self.mentioned_list = mentioned_list
+        self.mentioned_mobile_list = mentioned_mobile_list
 
     def execute(self, context):
         self.log.info('Sending qyweixin message.')
@@ -68,7 +68,7 @@ class QyweixinOperator(BaseOperator):
             self.qyweixin_conn_id,
             self.message_type,
             self.message,
-            self.at_mobiles,
-            self.at_all
+            self.mentioned_list,
+            self.mentioned_mobile_list
         )
         hook.send()

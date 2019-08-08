@@ -51,16 +51,14 @@ class QyweixinHook(HttpHook):
                  qyweixin_conn_id='qyweixin_default',
                  message_type='text',
                  message=None,
-                 at_mobiles=None,
-                 at_all=False,
                  *args,
                  **kwargs
                  ):
         super(QyweixinHook, self).__init__(http_conn_id=qyweixin_conn_id, *args, **kwargs)
         self.message_type = message_type
         self.message = message
-        self.at_mobiles = at_mobiles
-        self.at_all = at_all
+        self.mentioned_list = mentioned_list
+        self.mentioned_mobile_list = mentioned_mobile_list
 
     def _get_endpoint(self):
         """
@@ -84,6 +82,10 @@ class QyweixinHook(HttpHook):
                 'msgtype': self.message_type,
                 self.message_type: {
                     'content': self.message
+                }if self.message_type == 'text' else self.message,
+                'at': {
+                    'mentioned_list': self.mentioned_list,
+                    'mentioned_mobile_list': self.mentioned_mobile_list
                 }
             }
         else:
