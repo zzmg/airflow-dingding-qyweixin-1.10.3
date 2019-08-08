@@ -103,6 +103,8 @@ from airflow.utils.dates import cron_presets, date_range as utils_date_range
 from airflow.utils.db import provide_session
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.email import send_email
+from airflow.utils.dingbot import dingbot_msg_sender
+from airflow.utils.qyweixin import qyweixin_msg_sender
 from airflow.utils.helpers import (
     as_tuple, is_container, validate_key, pprinttable)
 from airflow.utils.operator_resources import Resources
@@ -132,7 +134,6 @@ class NullFernet(object):
     """
     A "Null" encryptor class that doesn't encrypt or decrypt but that presents
     a similar interface to Fernet.
-
     The purpose of this is to make the rest of the code not have to know the
     difference, and to only display the message once, not 20 times when
     `airflow initdb` is ran.
@@ -152,10 +153,8 @@ _fernet = None
 def get_fernet():
     """
     Deferred load of Fernet key.
-
     This function could fail either because Cryptography is not installed
     or because the Fernet key is invalid.
-
     :return: Fernet object
     :raises: airflow.exceptions.AirflowException if there's a problem trying to load Fernet
     """
@@ -207,7 +206,6 @@ def clear_task_instances(tis,
     """
     Clears a set of task instances, but makes sure the running ones
     get killed.
-
     :param tis: a list of task instances
     :param session: current session
     :param activate_dag_runs: flag to check for active dag run
@@ -272,7 +270,6 @@ class DagBag(BaseDagBag, LoggingMixin):
     different teams or security profiles. What would have been system level
     settings are now dagbag level so that one system can run multiple,
     independent settings sets.
-
     :param dag_folder: the folder to scan to find DAGs
     :type dag_folder: unicode
     :param executor: the executor to use when executing task instances
@@ -488,7 +485,6 @@ class DagBag(BaseDagBag, LoggingMixin):
         """
         Fail given zombie tasks, which are tasks that haven't
         had a heartbeat for too long, in the current DagBag.
-
         :param zombies: zombie task instances to kill.
         :type zombies: airflow.utils.dag_processing.SimpleTaskInstance
         :param session: DB session.
@@ -558,12 +554,10 @@ class DagBag(BaseDagBag, LoggingMixin):
         """
         Given a file path or a folder, this method looks for python modules,
         imports them and adds them to the dagbag collection.
-
         Note that if a ``.airflowignore`` file is found while processing
         the directory, it will behave much like a ``.gitignore``,
         ignoring files that match any of the regex patterns specified
         in the file.
-
         **Note**: The patterns in .airflowignore are treated as
         un-anchored regexes, not shell-like glob patterns.
         """
@@ -648,10 +642,8 @@ class TaskInstance(Base, LoggingMixin):
     Task instances store the state of a task instance. This table is the
     authority and single source of truth around what tasks have run and the
     state they are in.
-
     The SqlAlchemy model doesn't have a SqlAlchemy foreign key to the task or
     dag model deliberately to have more control over transactions.
-
     Database transactions on this table should insure double triggers and
     any confusion around what task instances are or aren't ready to run
     even while multiple schedulers may be firing task instances.
@@ -734,7 +726,6 @@ class TaskInstance(Base, LoggingMixin):
         """
         Return the try number that this task number will be when it is actually
         run.
-
         If the TI is currently running, this will match the column in the
         databse, in all othercases this will be incremenetd
         """
@@ -846,7 +837,6 @@ class TaskInstance(Base, LoggingMixin):
                          ):
         """
         Generates the shell command required to execute this task instance.
-
         :param dag_id: DAG ID
         :type dag_id: unicode
         :param task_id: Task ID
@@ -978,7 +968,6 @@ class TaskInstance(Base, LoggingMixin):
     def refresh_from_db(self, session=None, lock_for_update=False):
         """
         Refreshes the task instance from the database based on the primary key
-
         :param lock_for_update: if True, indicates that the database should
             lock the TaskInstance (issuing a FOR UPDATE clause) until the
             session is committed.
@@ -1049,7 +1038,6 @@ class TaskInstance(Base, LoggingMixin):
         """
         Checks whether the dependents of this task instance have all succeeded.
         This is meant to be used by wait_for_downstream.
-
         This is useful when you do not want to start processing the next
         schedule of a task until the dependents are done. For instance,
         if the task DROPs and recreates a table.
@@ -1110,7 +1098,6 @@ class TaskInstance(Base, LoggingMixin):
         Returns whether or not all the conditions are met for this task instance to be run
         given the context for the dependencies (e.g. a task instance being force run from
         the UI will ignore some dependencies).
-
         :param dep_context: The execution context that determines the dependencies that
             should be evaluated.
         :type dep_context: DepContext
@@ -1228,7 +1215,6 @@ class TaskInstance(Base, LoggingMixin):
     def get_dagrun(self, session):
         """
         Returns the DagRun for this TaskInstance
-
         :param session:
         :return: DagRun
         """
@@ -1256,7 +1242,6 @@ class TaskInstance(Base, LoggingMixin):
         Checks dependencies and then sets state to RUNNING if they are met. Returns
         True if and only if state is set to RUNNING, which implies that task should be
         executed, in preparation for _run_raw_task
-
         :param verbose: whether to turn on more verbose logging
         :type verbose: bool
         :param ignore_all_deps: Ignore all of the non-critical dependencies, just runs
@@ -1387,7 +1372,6 @@ class TaskInstance(Base, LoggingMixin):
         before execution) and then sets the appropriate final state after
         completion and runs any post-execute callbacks. Meant to be called
         only after another function changes the state to running.
-
         :param mark_success: Don't run the task, mark its state as success
         :type mark_success: bool
         :param test_mode: Doesn't record success or failure in the DB
@@ -1603,6 +1587,10 @@ class TaskInstance(Base, LoggingMixin):
                 self.log.info('Marking task as UP_FOR_RETRY')
                 if task.email_on_retry and task.email:
                     self.email_alert(error)
+                if task.ding_on_retry:
+                    self.dingbot_alert(error)
+                if task.qyweixin_on_retry:
+                    self.qyweixin_alert(error)
             else:
                 self.state = State.FAILED
                 if task.retries:
@@ -1611,6 +1599,10 @@ class TaskInstance(Base, LoggingMixin):
                     self.log.info('Marking task as FAILED.')
                 if task.email_on_failure and task.email:
                     self.email_alert(error)
+                if task.ding_on_failure:
+                    self.dingbot_alert(error)
+                if task.qyweixin_on_failure:
+                    self.qyweixin_alert(error)
         except Exception as e2:
             self.log.error('Failed to send email to: %s', task.email)
             self.log.exception(e2)
@@ -1815,6 +1807,7 @@ class TaskInstance(Base, LoggingMixin):
             'Log file: {{ti.log_filepath}}<br>'
             'Mark success: <a href="{{ti.mark_success_url}}">Link</a><br>'
         )
+
         def render(key, content):
             if configuration.has_option('email', key):
                 path = configuration.get('email', key)
@@ -1826,6 +1819,33 @@ class TaskInstance(Base, LoggingMixin):
         subject = render('subject_template', default_subject)
         html_content = render('html_content_template', default_html_content)
         send_email(self.task.email, subject, html_content)
+    
+    def dingbot_alert(self, exception):
+        task = self.task
+        title = "Airflow alert: {self}".format(**locals())
+        exception = str(exception).replace('\n', '<br>')
+        body = (
+            "##{{ti}} \n"
+            "### {self.task_id} \n"
+            "* Try {try_number} out of {max_tries} \n"
+            "Exception:<br>{exception}<br>"
+            "Log: <a href='{self.log_url}'>Link</a><br>"
+        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
+        dingbot_msg_sender(body)
+       
+    def qyweixin_alert(self, exception):
+        task = self.task
+        title = "Airflow alert: {self}".format(**locals())
+        exception = str(exception).replace('\n', '<br>')
+        body = (
+            "##{{ti}} \n"
+            "<h2> {self.task_id} </h2> <br>"
+            "Try {try_number} out of {max_tries}<br>"
+            "Exception:<br>{exception}<br>"
+            "Log: <a href='{self.log_url}'>Link</a><br>"
+        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
+        qyweixin_msg_sender(body)
+
     def set_duration(self):
         if self.end_date and self.start_date:
             self.duration = (self.end_date - self.start_date).total_seconds()
@@ -1839,7 +1859,6 @@ class TaskInstance(Base, LoggingMixin):
             execution_date=None):
         """
         Make an XCom available for tasks to pull.
-
         :param key: A key for the XCom
         :type key: str
         :param value: A value for the XCom. The value is pickled and stored
@@ -1872,16 +1891,13 @@ class TaskInstance(Base, LoggingMixin):
             include_prior_dates=False):
         """
         Pull XComs that optionally meet certain criteria.
-
         The default value for `key` limits the search to XComs
         that were returned by other tasks (as opposed to those that were pushed
         manually). To remove this filter, pass key=None (or any desired value).
-
         If a single task_id string is provided, the result is the value of the
         most recent matching XCom from that task_id. If multiple task_ids are
         provided, a tuple of matching values is returned. None is returned
         whenever no matches are found.
-
         :param key: A key for the XCom. If provided, only XComs with matching
             keys will be returned. The default key is 'return_value', also
             available as a constant XCOM_RETURN_KEY. This key is automatically
@@ -1939,7 +1955,6 @@ class BaseOperator(LoggingMixin):
     become nodes in the dag, BaseOperator contains many recursive methods for
     dag crawling behavior. To derive this class, you are expected to override
     the constructor as well as the 'execute' method.
-
     Operators derived from this class should perform or trigger certain tasks
     synchronously (wait for completion). Example of operators could be an
     operator that runs a Pig job (PigOperator), a sensor operator that
@@ -1947,12 +1962,10 @@ class BaseOperator(LoggingMixin):
     moves data from Hive to MySQL (Hive2MySqlOperator). Instances of these
     operators (tasks) target specific operations, running specific scripts,
     functions or data transfers.
-
     This class is abstract and shouldn't be instantiated. Instantiating a
     class derived from this one results in the creation of a task object,
     which ultimately becomes a node in DAG objects. Task dependencies should
     be set by using the set_upstream and/or set_downstream methods.
-
     :param task_id: a unique, meaningful id for the task
     :type task_id: str
     :param owner: the owner of the task, using the unix username is recommended
@@ -2080,17 +2093,14 @@ class BaseOperator(LoggingMixin):
     :param executor_config: Additional task-level configuration parameters that are
         interpreted by a specific executor. Parameters are namespaced by the name of
         executor.
-
         **Example**: to run this task in a specific docker container through
         the KubernetesExecutor ::
-
             MyOperator(...,
                 executor_config={
                 "KubernetesExecutor":
                     {"image": "myCustomDockerImage"}
                     }
             )
-
     :type executor_config: dict
     """
 
@@ -2119,6 +2129,10 @@ class BaseOperator(LoggingMixin):
             email=None,
             email_on_retry=True,
             email_on_failure=True,
+            ding_on_retry = True,
+            ding_on_failure = True,
+            qyweixin_on_retry = True,
+            qyweixin_on_failure = True,
             retries=0,
             retry_delay=timedelta(seconds=300),
             retry_exponential_backoff=False,
@@ -2167,6 +2181,10 @@ class BaseOperator(LoggingMixin):
         self.email = email
         self.email_on_retry = email_on_retry
         self.email_on_failure = email_on_failure
+        self.ding_on_retry = ding_on_retry
+        self.ding_on_failure = ding_on_failure
+        self.qyweixin_on_retry = qyweixin_on_retry
+        self.qyweixin_on_failure = qyweixin_on_failure
 
         self.start_date = start_date
         if start_date and not isinstance(start_date, datetime):
@@ -2310,7 +2328,6 @@ class BaseOperator(LoggingMixin):
     def __rshift__(self, other):
         """
         Implements Self >> Other == self.set_downstream(other)
-
         If "Other" is a DAG, the DAG is assigned to the Operator.
         """
         if isinstance(other, DAG):
@@ -2325,7 +2342,6 @@ class BaseOperator(LoggingMixin):
     def __lshift__(self, other):
         """
         Implements Self << Other == self.set_upstream(other)
-
         If "Other" is a DAG, the DAG is assigned to the Operator.
         """
         if isinstance(other, DAG):
@@ -2448,7 +2464,6 @@ class BaseOperator(LoggingMixin):
         """
         This is the main method to derive when creating an operator.
         Context is the same dictionary used as when rendering jinja templates.
-
         Refer to get_template_context for more context.
         """
         raise NotImplementedError()
@@ -2905,7 +2920,6 @@ class DagModel(Base):
         """
         Creates a dag run from this dag including the tasks associated with this dag.
         Returns the dag run.
-
         :param run_id: defines the the run id for this dag run
         :type run_id: str
         :param execution_date: the execution date of this dag run
@@ -2938,10 +2952,8 @@ class DAG(BaseDag, LoggingMixin):
     each individual tasks as their dependencies are met. Certain tasks have
     the property of depending on their own past, meaning that they can't run
     until their previous schedule (and upstream tasks) are completed.
-
     DAGs essentially act as namespaces for tasks. A task_id can only be
     added once to a DAG.
-
     :param dag_id: The id of the DAG
     :type dag_id: str
     :param description: The description for the DAG to e.g. be shown on the webserver
@@ -3188,7 +3200,6 @@ class DAG(BaseDag, LoggingMixin):
     def is_fixed_time_schedule(self):
         """
         Figures out if the DAG schedule has a fixed time (e.g. 3 AM).
-
         :return: True if the schedule has a fixed time, False if not.
         """
         now = datetime.now()
@@ -3205,7 +3216,6 @@ class DAG(BaseDag, LoggingMixin):
     def following_schedule(self, dttm):
         """
         Calculates the following schedule for this dag in UTC.
-
         :param dttm: utc datetime
         :return: utc datetime
         """
@@ -3233,7 +3243,6 @@ class DAG(BaseDag, LoggingMixin):
     def previous_schedule(self, dttm):
         """
         Calculates the previous schedule for this dag in UTC
-
         :param dttm: utc datetime
         :return: utc datetime
         """
@@ -3262,7 +3271,6 @@ class DAG(BaseDag, LoggingMixin):
         """
         Returns a list of dates between the interval received as parameter using this
         dag's schedule interval. Returned dates can be used for execution dates.
-
         :param start_date: the start date of the interval
         :type start_date: datetime
         :param end_date: the end date of the interval, defaults to timezone.utcnow()
@@ -3415,10 +3423,8 @@ class DAG(BaseDag, LoggingMixin):
         on_failure_callback or on_success_callback. This method gets the context of a
         single TaskInstance part of this DagRun and passes that to the callable along
         with a 'reason', primarily to differentiate DagRun failures.
-
         .. note: The logs end up in
             ``$AIRFLOW_HOME/logs/scheduler/latest/PROJECT/DAG_FILE.py.log``
-
         :param dagrun: DagRun object
         :param success: Flag to specify if failure or success callback should be called
         :param reason: Completion reason
@@ -3438,7 +3444,6 @@ class DAG(BaseDag, LoggingMixin):
     def get_active_runs(self, session=None):
         """
         Returns a list of dag run execution dates currently running
-
         :param session:
         :return: List of execution dates
         """
@@ -3454,7 +3459,6 @@ class DAG(BaseDag, LoggingMixin):
     def get_num_active_runs(self, external_trigger=None, session=None):
         """
         Returns the number of active "running" dag runs
-
         :param external_trigger: True for externally triggered active dag runs
         :type external_trigger: bool
         :param session:
@@ -3475,7 +3479,6 @@ class DAG(BaseDag, LoggingMixin):
         """
         Returns the dag run for a given execution date if it exists, otherwise
         none.
-
         :param execution_date: The execution date of the DagRun to find.
         :param session:
         :return: The DagRun if found, otherwise None.
@@ -3577,10 +3580,8 @@ class DAG(BaseDag, LoggingMixin):
         """
         Sorts tasks in topographical order, such that a task comes after any of its
         upstream dependencies.
-
         Heavily inspired by:
         http://blog.jupo.org/2012/04/06/topological-sorting-acyclic-directed-graphs/
-
         :return: list of tasks in topological order
         """
 
@@ -3906,7 +3907,6 @@ class DAG(BaseDag, LoggingMixin):
     def add_task(self, task):
         """
         Add a task to the DAG
-
         :param task: the task you want to add
         :type task: task
         """
@@ -3945,7 +3945,6 @@ class DAG(BaseDag, LoggingMixin):
     def add_tasks(self, tasks):
         """
         Add a list of tasks to the DAG
-
         :param tasks: a lit of tasks you want to add
         :type tasks: list of tasks
         """
@@ -3971,7 +3970,6 @@ class DAG(BaseDag, LoggingMixin):
     ):
         """
         Runs the DAG.
-
         :param start_date: the start date of the range to run
         :type start_date: datetime.datetime
         :param end_date: the end date of the range to run
@@ -4002,7 +4000,6 @@ class DAG(BaseDag, LoggingMixin):
         :type: bool
         :param run_backwards:
         :type: bool
-
         """
         from airflow.jobs import BackfillJob
         if not executor and local:
@@ -4048,7 +4045,6 @@ class DAG(BaseDag, LoggingMixin):
         """
         Creates a dag run from this dag including the tasks associated with this dag.
         Returns the dag run.
-
         :param run_id: defines the the run id for this dag run
         :type run_id: str
         :param execution_date: the execution date of this dag run
@@ -4091,7 +4087,6 @@ class DAG(BaseDag, LoggingMixin):
         Save attributes about this DAG to the DB. Note that this method
         can be called for both DAGs and SubDAGs. A SubDag is actually a
         SubDagOperator.
-
         :param dag: the DAG object to save to the DB
         :type dag: airflow.models.DAG
         :param sync_time: The time that the DAG should be marked as sync'ed
@@ -4129,7 +4124,6 @@ class DAG(BaseDag, LoggingMixin):
         """
         Given a list of known DAGs, deactivate any other DAGs that are
         marked as active in the ORM
-
         :param active_dag_ids: list of DAG IDs that are active
         :type active_dag_ids: list[unicode]
         :return: None
@@ -4149,7 +4143,6 @@ class DAG(BaseDag, LoggingMixin):
         """
         Deactivate any DAGs that were last touched by the scheduler before
         the expiration date. These DAGs were likely deleted.
-
         :param expiration_date: set inactive DAGs that were touched before this
             time
         :type expiration_date: datetime
@@ -4172,7 +4165,6 @@ class DAG(BaseDag, LoggingMixin):
     def get_num_task_instances(dag_id, task_ids, states=None, session=None):
         """
         Returns the number of task instances in the given DAG.
-
         :param session: ORM session
         :param dag_id: ID of the DAG to get the task concurrency of
         :type dag_id: unicode
@@ -4334,7 +4326,6 @@ class Variable(Base, LoggingMixin):
         """
         Like a Python builtin dict object, setdefault returns the current value
         for a key, and if it isn't there, stores the default value and returns it.
-
         :param key: Dict key for this Variable
         :type key: str
         :param default: Default value to set and return if the variable
@@ -4448,7 +4439,6 @@ class XCom(Base, LoggingMixin):
         Store an XCom value.
         TODO: "pickling" has been deprecated and JSON is preferred.
         "pickling" will be removed in Airflow 2.0.
-
         :return: None
         """
         session.expunge_all()
@@ -4499,7 +4489,6 @@ class XCom(Base, LoggingMixin):
         Retrieve an XCom value, optionally meeting certain criteria.
         TODO: "pickling" has been deprecated and JSON is preferred.
         "pickling" will be removed in Airflow 2.0.
-
         :return: XCom value
         """
         filters = []
@@ -4663,7 +4652,6 @@ class DagRun(Base, LoggingMixin):
              session=None):
         """
         Returns a set of dag runs for the given search criteria.
-
         :param dag_id: the dag_id to find dag runs for
         :type dag_id: int, list
         :param run_id: defines the the run id for this dag run
@@ -4737,7 +4725,6 @@ class DagRun(Base, LoggingMixin):
     def get_task_instance(self, task_id, session=None):
         """
         Returns the task instance specified by task_id for this dag run
-
         :param task_id: the task id
         """
 
@@ -4753,7 +4740,6 @@ class DagRun(Base, LoggingMixin):
     def get_dag(self):
         """
         Returns the Dag associated with this DagRun.
-
         :return: DAG
         """
         if not self.dag:
@@ -4788,7 +4774,6 @@ class DagRun(Base, LoggingMixin):
         """
         Determines the overall state of the DagRun based on the state
         of its TaskInstances.
-
         :return: State
         """
 
