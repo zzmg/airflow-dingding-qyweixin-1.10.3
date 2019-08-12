@@ -1825,7 +1825,9 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
-            'u"#### {task_id} \n > log [href]({log_url})".format(task_id=self.task_id,log_url=ti.log_url)'
+            u"#### {task_id} \n > log [href]({log_url})".format(
+                task_id=self.task_id,
+                log_url=ti.log_url)
         )
         dingbot_msg_sender(body)
        
@@ -1834,7 +1836,9 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
-            'u"#### {task_id} \n > log [href]({log_url})".format(task_id=self.task_id,log_url=ti.log_url)'
+            u"#### {task_id} \n > log [href]({log_url})".format(
+                task_id=self.task_id,
+                log_url=ti.log_url)
         )
         qyweixin_msg_sender(body)
 
