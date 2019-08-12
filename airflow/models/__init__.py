@@ -1826,7 +1826,7 @@ class TaskInstance(Base, LoggingMixin):
         exception = str(exception).replace('\n', '<br>')
         body = (
             'u"#### {task_id} \n > log [href]({log_url})".format(task_id=self.task_id,log_url=ti.log_url)'
-        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
+        )
         dingbot_msg_sender(body)
        
     def qyweixin_alert(self, exception):
@@ -1835,7 +1835,7 @@ class TaskInstance(Base, LoggingMixin):
         exception = str(exception).replace('\n', '<br>')
         body = (
             'u"#### {task_id} \n > log [href]({log_url})".format(task_id=self.task_id,log_url=ti.log_url)'
-        ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
+        )
         qyweixin_msg_sender(body)
 
     def set_duration(self):
