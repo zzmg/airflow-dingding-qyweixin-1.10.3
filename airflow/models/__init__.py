@@ -1825,11 +1825,9 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
-            "##{{ti}} \n"
-            "### {self.task_id} \n"
-            "* Try {try_number} out of {max_tries} \n"
-            "* Exception:<br>{exception}<br> \n"
-            "* Log: <a href='{self.log_url}'>Link</a><br>"
+            'u"#### {task_id} \n > log [href]({log_url})".format(
+                task_id=self.task_id,
+                log_url=ti.log_url)'
         ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
         dingbot_msg_sender(body)
        
@@ -1838,11 +1836,9 @@ class TaskInstance(Base, LoggingMixin):
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
         body = (
-            "##{{ti}} \n"
-            "### {self.task_id} \n"
-            "* Try {try_number} out of {max_tries}<br> \n"
-            "* Exception:<br>{exception}<br> \n"
-            "* Log: <a href='{self.log_url}'>Link</a><br>"
+            'u"#### {task_id} \n > log [href]({log_url})".format(
+                task_id=self.task_id,
+                log_url=ti.log_url)'
         ).format(try_number=self.try_number, max_tries=self.max_tries + 1, **locals())
         qyweixin_msg_sender(body)
 
