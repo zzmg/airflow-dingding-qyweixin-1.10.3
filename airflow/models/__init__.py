@@ -1835,7 +1835,7 @@ class TaskInstance(Base, LoggingMixin):
                 "title": "AIRFLOW ERROR",
                 "text": u"#### {task_id} \n > log [href]({log_url})".format(
                     task_id=self.task_id,
-                    log_url=ti.log_url
+                    log_url=self.log_url
                 )
             }
         }
@@ -1855,7 +1855,7 @@ class TaskInstance(Base, LoggingMixin):
             "markdown": {
                 "content": u"#### {task_id} \n > log [href]({log_url})".format(
                     task_id=self.task_id,
-                    log_url=ti.log_url
+                    log_url=self.log_url
                 )
             }
         }
