@@ -17,17 +17,17 @@ def dingbot_msg_sender(msg):
     bot_url = configuration.get('dingding', 'DING_BOT_URL')
     headers = {'Content-Type': 'application/json'}
 
-    md_text = {
-        "title": "AIRFLOW ERROR",
-        "text": msg
-    }
+    #md_text = {
+    #    "title": "AIRFLOW ERROR",
+    #    "text": msg
+    #}
     print(msg)
-    post_data = {
-        "msgtype": "markdown",
-        "markdown": md_text
-    }
-    print(post_data)
-    r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
+    #post_data = {
+    #    "msgtype": "markdown",
+    #    "markdown": md_text
+    #}
+    #print(post_data)
+    r = requests.post(bot_url, headers=headers,data=json.dumps(msg))
     print(r)
     with open('/usr/local/airflow/logs/ali_phone_call.log', 'a') as the_file:
         the_file.write('1\n')

@@ -1824,22 +1824,41 @@ class TaskInstance(Base, LoggingMixin):
         task = self.task
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
-        body = (
-            u"#### {task_id} \n > log [href]({log_url})".format(
-                task_id=self.task_id,
-                log_url=ti.log_url)
-        )
+        #body = (
+        #    u"#### {task_id} \n > log [href]({log_url})".format(
+        #        task_id=self.task_id,
+        #        log_url=ti.log_url)
+        #)
+        data = {
+            "msgtype": "markdown",
+            "markdown": {
+                "title": "AIRFLOW ERROR",
+                "text": u"#### {task_id} \n > log [href]({log_url})".format(
+                    task_id=self.task_id,
+                    log_url=ti.log_url
+                )
+            }
+        }
         dingbot_msg_sender(body)
        
     def qyweixin_alert(self, exception):
         task = self.task
         title = "Airflow alert: {self}".format(**locals())
         exception = str(exception).replace('\n', '<br>')
-        body = (
-            u"#### {task_id} \n > log [href]({log_url})".format(
-                task_id=self.task_id,
-                log_url=ti.log_url)
-        )
+        #body = (
+        #    u"#### {task_id} \n > log [href]({log_url})".format(
+        #        task_id=self.task_id,
+        #        log_url=ti.log_url)
+        #)
+        body = {
+            "msgtype": "markdown",
+            "markdown": {
+                "content": u"#### {task_id} \n > log [href]({log_url})".format(
+                    task_id=self.task_id,
+                    log_url=ti.log_url
+                )
+            }
+        }
         qyweixin_msg_sender(body)
 
     def set_duration(self):
