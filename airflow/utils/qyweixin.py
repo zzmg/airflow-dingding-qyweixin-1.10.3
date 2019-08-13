@@ -18,16 +18,17 @@ def qyweixin_msg_sender(msg):
     bot_url = configuration.get('qyweixin','QYWEIXIN_BOT_URL')
     headers = {'Content-Type': 'application/json'}
 
-    md_text = {
-        "content": msg
-    }
+    #md_text = {
+    #    "content": msg
+    #}
     print(msg)
-    post_data = {
-        "msgtype": "markdown",
-        "markdown": md_text
-    }
-    print(post_data)
-    r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
+    #post_data = {
+    #    "msgtype": "markdown",
+    #    "markdown": md_text
+    #}
+    #print(post_data)
+    #r = requests.post(bot_url, headers=headers,data=json.dumps(post_data))
+    r = requests.post(bot_url, headers=headers,data=json.dumps(msg))
     print(r)
     log.info("Sent an alert message to qyweixin.....")
 def qiyeweixin_bot_backend(msg):
