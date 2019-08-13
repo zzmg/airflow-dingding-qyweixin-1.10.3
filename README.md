@@ -1,3 +1,24 @@
+configuration
+```
+default_args = {
+        'owner': 'zmg',
+        'depends_on_past': False,
+        'start_date': datetime(2019, 7, 1, 0),
+        #'email': ['zhangmengge@wscn.work'],
+        #'email_on_failure': True,
+        #'email_on_retry': True,
+        'ding_on_failure': True,
+        'ding_on_retry': True,
+        'qyweixin_on_failure': True,
+        'qyweixin_on_retry': True,
+        'retries': 3,
+        'retry_delay': timedelta(minutes=1),
+        'queue': 'test'
+}
+```
+
+
+
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
