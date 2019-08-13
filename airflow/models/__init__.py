@@ -1829,7 +1829,7 @@ class TaskInstance(Base, LoggingMixin):
         #        task_id=self.task_id,
         #        log_url=ti.log_url)
         #)
-        data = {
+        body = {
             "msgtype": "markdown",
             "markdown": {
                 "title": "AIRFLOW ERROR",
